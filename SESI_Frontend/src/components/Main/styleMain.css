@@ -1,0 +1,56 @@
+.main {
+  display: flex;
+  align-items: center;
+  max-width: 900px;
+  width: 900px;
+}
+
+
+.tipo1 {
+  display: flex;
+  justify-content: space-evenly;
+  flex-direction: row;
+  align-items: center;
+}
+
+.img1 img{
+  width: 500px;
+  height: 278px;
+  padding: 12px;
+}
+
+.text1 {
+  display: flex;
+  align-items: flex-start;
+  text-align: center;
+  padding: 12px;
+}
+
+.text1 p {
+  margin: 0;
+}
+
+
+
+
+@media (max-width: 991px) {
+  .main {
+    max-width: 800px;
+    width: 100%;
+  }
+}
+
+@media (max-width: 768px) {
+  .main {
+    max-width: 600px;
+    width: 100%;
+  }
+}
+
+@media (max-width: 768px) {
+  .main {
+    max-width: 600px;
+    width: 100%;
+  }
+}
+
