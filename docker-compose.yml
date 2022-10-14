@@ -1,0 +1,31 @@
+version: "3.7"
+
+services:
+  
+  frontend:
+    
+    build:
+      context: ./SESI-Frontend
+      dockerfile: fe.dockerfile
+    
+    image: sesi_fe:1.0.0
+    container_name: sesi-fe
+    restart: always
+
+    volumes:
+      - /var/www/html/sesi_fe:/var/www/html/
+
+    ports:
+      - "8080:8080"
+    
+    environment:
+      - NODE_ENV=development
+    
+    depends_on:
+    - database
+    - backend
+
+networks:
+
+  db_be:
+    driver: bridge
