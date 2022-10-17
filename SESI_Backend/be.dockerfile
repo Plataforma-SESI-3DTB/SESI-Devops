@@ -1,6 +1,6 @@
 FROM node:16
 
-WORKDIR /usr/src/SESI_BE
+WORKDIR /usr/src/sesi_be
 COPY package*.json ./
 
 RUN npm install

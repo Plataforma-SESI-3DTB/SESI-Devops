@@ -1,10 +1,10 @@
-FROM mysql:8.0.31
+FROM mysql
 
 ENV MYSQL_ROOT_PASSWORD passwd
 ENV MYSQL_USER api
 ENV MYSQL_PASSWORD passwd
 
-COPY ./BANCO_DE_DADOS.sql /docker-entrypoint-initdb.d/
+COPY BANCO_DE_DADOS.sql /docker-entrypoint-initdb.d/
 
 
 WORKDIR /var/lib/mysql

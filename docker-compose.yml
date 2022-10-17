@@ -1,19 +1,70 @@
 version: "3.7"
 
 services:
+
+
+  database:
+    build:
+      context: ./SESI_Database
+      dockerfile: db.dockerfile
+
+    image: sesi_db:1.0.0
+
+    container_name: sesi_db
+    command: --default-authentication-plugin=mysql_native_password
+    restart: always
+
+    environment:
+      MYSQL_ROOT_PASSWORD: passwd
+
+    volumes:
+      - ./SESI_Database:/var/lib/mysql/
+
+    ports:
+      - "30306:3306"
+
+    expose:
+      - "30306"
+
+    networks:
+      - db_be
+
+  backend:
+    build:
+      context: ./SESI_Backend
+      dockerfile: be.dockerfile
+    
+    image: sesi_be:1.0.0
+    container_name: sesi_be
+    restart: always
+    command: node src/index.js
+    volumes:
+      - ./SESI_Backend:/home/node/app
+
+    ports:
+      - "24:3000"
+
+    expose:
+      - "24"
+    
+    depends_on:
+      - database
+
+    networks:
+      - db_be
   
   frontend:
     
     build:
-      context: ./SESI-Frontend
+      context: ./SESI_Frontend
       dockerfile: fe.dockerfile
     
     image: sesi_fe:1.0.0
-    container_name: sesi-fe
+    container_name: sesi_fe
     restart: always
 
     volumes:
-      - /var/www/html/sesi_fe:/var/www/html/
+      - ./SESI_Frontend:/var/www/html/
 
     ports:
       - "8080:8080"
