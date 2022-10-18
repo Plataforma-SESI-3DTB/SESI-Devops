@@ -14,11 +14,8 @@ services:
     command: --default-authentication-plugin=mysql_native_password
     restart: always
 
-    environment:
-      MYSQL_ROOT_PASSWORD: passwd
-
     volumes:
-      - ./SESI_Database:/var/lib/mysql/
+      - ./SESI_Database:/var/lib/mysqld/
 
     ports:
       - "30306:3306"
@@ -37,9 +34,9 @@ services:
     image: sesi_be:1.0.0
     container_name: sesi_be
     restart: always
-    command: node src/index.js
+    command: node app.js
     volumes:
-      - ./SESI_Backend:/home/node/app
+      - ./SESI_Backend:/usr/sesi_be
 
     ports:
       - "24:3000"
