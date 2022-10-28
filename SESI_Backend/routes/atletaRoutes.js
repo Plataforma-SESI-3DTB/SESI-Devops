@@ -21,8 +21,8 @@ const router = express.Router()
 router
     .get('/', atletaControllers.listUsers)
     .put('/atualizarAtleta', atletaControllers.changeUser)
-    .get('/verExamesSolicitados/:id_atleta', atletaControllers.verExamesSolicitados)
-    .put('/enviarPdf/:id_atleta', upload.single('pdf'), atletaControllers.enviarPdf)
+    .get('/verExamesSolicitados/:id_atleta', atletaControllers.viewFile)
+    .put('/enviarPdf/:id_atleta', upload.single('pdf'), atletaControllers.sendPdf)
 
 
 module.exports = router

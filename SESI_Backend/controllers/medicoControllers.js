@@ -8,9 +8,7 @@ const bcrypt = require('bcrypt'); // Variável que vai pegar a criptografia
 const nodemailer = require("nodemailer");
 const fs = require('fs')
 const path = require('path')
-const { response } = require('express');
-const { fstat } = require('fs');
-const { setServers } = require('dns');
+
 
 // Criando class "atletaControllers" para fazer o CRUD
 class medicoControllers {
@@ -89,6 +87,11 @@ class medicoControllers {
 
         await database.sync()
         let request = await recoverModels.findAll({ raw: true })
+        const salt = bcrypt.genSaltSync(18)
+        const hash = bcrypt.hashSync(req.body.senha.toString(), salt)
+        req.body.senha = hash
+
+
         for (let x = 0; x < request.length; x++) { //andar por todos os campos até que a condição abaixo seja satisfeita
             if (req.body.email === request[x]['email']) {
                 if (req.body.codigo === request[x]['codigo']) { // se o código mandado for igual ao gerado na função acima, a senha será atualizada.
@@ -179,6 +182,7 @@ class medicoControllers {
             res.send({ msg: "Não foi possível acessar o servidor" })
         }
     }
+
 }
 
 

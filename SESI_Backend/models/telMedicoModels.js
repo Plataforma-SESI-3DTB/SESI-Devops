@@ -6,18 +6,18 @@ const database = require('../config/dbConfig');
 const medicoModels = require('./medicoModels');
 
 
-const tel_medModels = database.define('tel_medico', {
+const tel_medModels = database.define('tel_medicos', {
     idtel_med:{
-        type : Sequelize.INTEGER,
+        type : Sequelize.INTEGER(4),
         autoIncrement: true,
         allowNull: false,
         primaryKey: true,
     },
     ddd : Sequelize.CHAR(2),
-    numero : Sequelize.STRING(9),
-    tipo : Sequelize.ENUM('RESIDENCIAL' , 'COMERCIAL', 'CELULAR'),
+    num_tel_med : Sequelize.STRING(9),
+    tipo_tel_med : Sequelize.ENUM('RESIDENCIAL' , 'COMERCIAL', 'CELULAR'),
     id_tel_med : {
-        type : Sequelize.INTEGER,
+        type : Sequelize.INTEGER(4),
         references : {
             model : medicoModels,
             key : 'idmedico'

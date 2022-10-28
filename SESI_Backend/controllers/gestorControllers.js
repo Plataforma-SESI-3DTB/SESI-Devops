@@ -17,281 +17,265 @@ const telAtletaModels = require("../models/telAtletaModels"); // Variável que v
 const medicoModels = require('../models/medicoModels'); // Variável que vai armazenar o model: "medicoModels"
 const telMedicoModels = require('../models/telMedicoModels'); // Variável que vai armazenar o model: "telMedicoModels"
 const enderecoMedicoModels = require('../models/enderecoMedicoModels'); // Variável que vai armazenar o model: "enderecoMedicoModels"
-const examesModels = require('../models/exameModels');
 
+// Módulo Médico Convidade
+const medicoConvModels = require('../models/medicoConvModels'); // Variável que vai armazenar o model do Médico convidado
+const telMedConvModels = require('../models/telMedicoConvModels'); // Variável que vai armazenar o model telefone do Médico convidado
+const endMedConvModels = require("../models/enderecoMedicoConvModels"); // Variável que vai armazenar o model endereço do Médico convidado
+
+const {Op} = require('sequelize');
+
+// Armazenar os Models
+const perfil = {
+    'Atleta' : [atletaModels, enderecoAtletaModels, telAtletaModels],
+    'Gestor-Admin' : [gestorAdminModels],
+    'Gestor': [gestorModels],
+    'Médico': [medicoModels, telMedicoModels, enderecoMedicoModels],
+    'Médico-Convidado' : [medicoConvModels, telMedConvModels, endMedConvModels],
+}; // A const "perfil" vai armazenar todos os models. Com isso, conseguiremos diminuir a repetição do código 
 
 // Criando class "gestorControllers" para fazer o CRUD
-class gestorControllers {
+class gestorControllers{
 
     // -------------------------- LISTAR USUÁRIO --------------------------
-    static async listData(req, res) {
+    static async listData(req, res){
 
-        let arrayData = []; // Array que vai armazenar os dados 
-        await database.sync();
-        let data = await atletaModels.findAll({ where: { solicitacao: "solicitado" } }); // Filtro do banco de dados
-        data.forEach((data) => {
-            arrayData.push(data.nome, data.cpf, data.solicitacao) // Envia os dados para o array "arrayData"
-        });
-        res.status(200).json(arrayData); // Envia a resposta com os dados do "arrayData"
-    };
+        let array = perfil[req.body.cargo]; 
+        let array2 = [];
+
+        (async function(){
+            for (const elemento of array) {
+                array2.push(await elemento.findAll({raw : true}))
+            };
+
+            res.status(201).json(array2);
+        })();
+    };  
 
     // -------------------------- CRIAR USUÁRIO --------------------------
-    static async createUser(req, res) {
+    static async createUser(req, res){ // função "createUser" é uma função para criar usuário 
 
         let verification = true; // Vai verificar se o programa pode dar continuidade
 
-        Object.keys(req.body).forEach(function eachKey(key) {
+        Object.keys(req.body).forEach(function eachKey(key) {  
             // Validação de todos os campos 
-            if (!req.body[key] || typeof req.body[key] == undefined || req.body[key] == null) {
+            if(!req.body[key] || typeof req.body[key] == undefined || req.body[key] == null){
                 verification = false // Vai atribuir o valor "false" para a variável
             };
         });
 
-        if (verification == false) { // Se a verificação for falsa
-            return res.status(422).json({ msg: 'Preencha todos os campos!!' }); //  422 - O servidor entende a requisição mas os dados não estão corretos para processar
+        if(verification == false){ // Se a variável "verification" for falsa
+            return res.status(422).json({msg: 'Preencha todos os campos!!'}); //  422 - O servidor entende a requisição mas os dados não estão corretos para processar
         }
-        else { // Caso ela seja verdadeira
+        else{ // Caso a variável "verification" seja verdadeira 
 
-            const { cpf } = req.body; // Essa const vai facilitar o chamado. Não precisaremos usar o req.body.campo para pegar o valor
+            const {cpf, email} = req.body; // Essa const vai facilitar o chamado. Não precisaremos usar o req.body.campo para pegar o valor
 
-            // Validar o campo CPF
-            if (!cpf || typeof cpf == undefined || cpf == null || cpf.toString().length != 11 || typeof cpf != 'number') {
-                return res.status(422).json({ msg: 'CPF inválido' });
+            // Validação específica para o campo CPF
+            if(!cpf || typeof cpf == undefined || cpf == null || cpf.toString().length != 11 || typeof cpf != 'number'){ 
+                return res.status(422).json({msg: 'CPF inválido'}); // Retorna a resposta para o usuário
+            };
+    
+            // Realizar a query para verificar se existe um usuário com esse cpf cadastrado 
+            const managerAdminExists = await gestorAdminModels.findOne({where: {[Op.or]: [{cpf: cpf},{email: email}]}}); // Gestor Admin
+            const managerExists = await gestorModels.findOne({where: {[Op.or]: [{cpf: cpf},{email: email}]}});; // Gestor
+            const medicExists = await medicoModels.findOne({where: {[Op.or]: [{cpf: cpf},{email: email}]}});; // Médico
+            const medicConvExists = await medicoConvModels.findOne({where: {[Op.or]: [{cpf: cpf},{email: email}]}}); //Médico Convidado
+            const athleteExists = await atletaModels.findOne({where: {[Op.or]: [{cpf: cpf},{email: email}]}});; // Atleta
+
+            // Realizar query 
+
+            if(medicConvExists || medicExists){
+                const crm = req.body.crm;
+                let user = await medicoModels.findOne({where: {crm: crm}});
+                if(user){
+                    return res.status(422).json({msg: 'CRM já cadastrado!'}); // Caso já tenha um usuário com esse cpf cadastrado
+                };
             };
 
-            // -------------------------- ATLETA --------------------------
-            if (req.body.cargo == "Atleta") {
-
-                const userExists = await atletaModels.findOne({ where: { cpf: cpf } }); // Realizar a query para verificar se existe um usuário com esse email cadastrado 
-
-                // Verificar se existe o usuário já está cadastrado no banco
-                if (userExists) {
-                    return res.status(422).json({ msg: 'CPF já cadastrado' }); // Caso já tenha um usuário com esse cpf cadastrado
-                }
-                else {
-                    await database.sync()
-
-                    // Criar a senha
-                    const salt = await bcrypt.genSalt(18); // Vai dificultar sua senha
-                    const passwordHash = await bcrypt.hash(req.body.senha.toString(), salt); // Vai receber a senha do usuário e vai adicionar o "Salt"
-                    req.body.senha = passwordHash; // Passando a senha criptografada
-                    try {
-                        await atletaModels.create(req.body); // Criar o usuário no banco 
-                        await telAtletaModels.create(req.body); // Criar o usuário no banco 
-                        await enderecoAtletaModels.create(req.body); // Criar o usuário no banco 
-                        res.status(200).json({ msg: 'Atleta cadastrado com sucesso!!' });
-                    }
-                    catch (err) {
-                        res.status(500).json({ msg: 'Erro interno, tente novamente mais tarde!' });
-                    }
-                }
+            if(managerAdminExists || managerExists || medicExists || medicConvExists || athleteExists){
+                return res.status(422).json({msg: 'Email ou CPF já cadastrado!'}); // Caso já tenha um usuário com esse cpf cadastrado
             }
-
-            // -------------------------- GESTOR --------------------------
-            if (req.body.cargo == "gestor") {
-
-                const userExists = await gestorModels.findOne({ where: { cpf: cpf } }); // Realizar a query para verificar se existe um usuário com esse email cadastrado 
-
-                // Verificar se existe o usuário já está cadastrado no banco
-                if (userExists) {
-                    return res.status(422).json({ msg: 'CPF já cadastrado' }); // Caso já tenha um usuário com esse cpf cadastrado
-                }
-                else {
-                    await database.sync()
-
-                    // Criar a senha
-                    const salt = await bcrypt.genSalt(18); // Vai dificultar sua senha
-                    /* const passwordHash = await bcrypt.hash(req.body.senha.toString(), salt); // Vai receber a senha do usuário e vai adicionar o "Salt"
+            else{
+                await database.sync();
+            
+                // Criar a senha
+                const salt = await bcrypt.genSalt(2); // Vai dificultar sua senha
+                const passwordHash = await bcrypt.hash(req.body.senha.toString(), salt); // Vai receber a senha do usuário e vai adicionar o "Salt"
                 
-                    req.body.senha = passwordHash; // Passando a senha criptografada
- */
-                    try {
-                        console.log("Foi")
-                        await gestorModels.create(req.body); // Criar o usuário no banco 
-                        res.status(200).json({ msg: 'Usuário cadastrado com sucesso!!' });
-                    }
-                    catch (err) {
-                        console.log("Foi Não")
-                        console.log(err)
-                    }
+                req.body.senha = passwordHash; // Passando a senha criptografada
+            
+                // Tenta salvar o usuário no banco de dados
+                try{
+                    let array = perfil[req.body.cargo]; // Array que vai selecionar o Model
+                    array.forEach((elemento) =>{ // Esse array pega todos os models e adiciona em os dados em cada tabela
+                        elemento.create(req.body); // Realiza a query para criar o usuário
+                    })
+                    res.status(200).json({msg: req.body.cargo + ' cadastrado com sucesso!!'}); // Retorna a resposta para o usuário
                 }
-            }
-
-
-            // -------------------------- GESTOR ADMIN --------------------------
-            if (req.body.cargo == "gestor-adm") {
-
-                const userExists = await gestorAdminModels.findOne({ where: { cpf: cpf } }); // Realizar a query para verificar se existe um usuário com esse email cadastrado 
-
-                // Verificar se existe o usuário já está cadastrado no banco
-                if (userExists) {
-                    return res.status(422).json({ msg: 'CPF já cadastrado' }); // Caso já tenha um usuário com esse cpf cadastrado
-                }
-                else {
-                    await database.sync()
-
-                    // Criar a senha
-                    const salt = await bcrypt.genSalt(18); // Vai dificultar sua senha
-                    const passwordHash = await bcrypt.hash(req.body.senha.toString(), salt); // Vai receber a senha do usuário e vai adicionar o "Salt"
-
-                    req.body.senha = passwordHash; // Passando a senha criptografada
-
-                    try {
-                        console.log("Foi")
-                        await gestorAdminModels.create(req.body); // Criar o usuário no banco 
-                        res.status(200).json({ msg: 'Usuário cadastrado com sucesso!!' });
-                    }
-                    catch (err) {
-                        console.log("Foi Não")
-                        console.log(err)
-                    }
-                }
-            }
-            if (req.body.cargo == "medico") {
-                let userExists = await medicoModels.findOne({ where: { cpf: cpf } })
-                if (userExists) {
-                    return res.status(422).json({ msg: 'CPF já cadastrado' })
-                }
-                else {
-                    const salt = await bcrypt.genSalt(18);
-                    /*                     const passwordHash = await bcrypt.hash(req.body.senha.toString(), salt)
-                    
-                                        req.body.senha = passwordHash */
-                }
-                try {
-                    await database.sync()
-                    await medicoModels.create(req.body)
-                    res.status(200).json({ msg: 'Usuario cadastrado com sucesso' })
-                }
-                catch (err) {
-                    res.send(err)
-                }
-            }
-        }
+                // Caso não tenha conseguido salvar o usuário
+                catch(err){
+                    res.status(500).json({msg: 'Erro interno, tente novamente mais tarde!'});
+                };
+            };
+        };
     };
 
     // -------------------------- ALTERAR USUÁRIO --------------------------
-    static async changeUser(req, res) {
+    static async changeUser(req, res){ // Função criada para alterar usuário no banco de dados
 
         let cpf = req.body.cpf; // Variável que vai armazenar o id
 
         // Criar a senha
-        const salt = await bcrypt.genSalt(12); // Vai dificultar sua senha
+        const salt = await bcrypt.genSalt(2); // Vai dificultar sua senha
         const passwordHash = await bcrypt.hash(req.body.senha.toString(), salt); // Vai receber a senha do usuário e vai adicionar o "Salt"
-
-        req.body.senha = passwordHash; // vai passar a senah criptografada
-
+        
+        req.body.senha = passwordHash; // vai passar a senha criptografada
+        
         let dadoAtualizado = req.body; // Variável que vai receber os dados novos 
+       
+        await database.sync(); 
 
-        await database.sync();
+        let verification = true; // Vai verificar se o programa pode dar continuidade
 
-        // Verifica se o cargo do usuário é Atleta
-        if (req.body.cargo == "atleta") {
-            try {
-                let user = atletaModels.findOne({ where: { cpf: cpf } })
-                await atletaModels.update(dadoAtualizado, { where: { cpf: cpf } }); // Altera o atleta no banco de dados
-                await enderecoAtletaModels.update(dadoAtualizado, { where: { id_end_atl: user.id } }); // Altera o endereço do atleta no banco de dados
-                await telAtletaModels.update(dadoAtualizado, { where: { id_tel_atl: user.id } }); // Altera o telefone do atleta no banco de dados
-                res.status(200).send("Atleta Atualizado!"); // Resposta final
-            }
-            catch (err) {
-                res.status(500).send("Houve um erro no servidor interno, tente novamente mais tarde!"); // Resposta final
-            }
+        Object.keys(req.body).forEach(function eachKey(key) {  
+            // Validação de todos os campos 
+            if(!req.body[key] || typeof req.body[key] == undefined || req.body[key] == null){
+                verification = false // Vai atribuir o valor "false" para a variável
+            };
+        });
+
+        if(verification == false){ // Se a variável "verification" for falsa
+            return res.status(422).json({msg: 'Preencha todos os campos!!'}); //  422 - O servidor entende a requisição mas os dados não estão corretos para processar
         }
+        else{
 
-        // Verifica se o cargo do usuário é Gestor Admin
-        if (req.body.cargo == "gestor-adm") {
-            try {
-                await gestorAdminModels.update(dadoAtualizado, { where: { cpf: cpf } }); // Query de alteração
-            }
-            catch (err) {
-                res.status(500).send("Houve um erro no servidor interno, tente novamente mais tarde!"); // Resposta final
-            }
-        }
+            // Verifica se o cargo do usuário é Gestor Admin
+            if(req.body.cargo == "Gestor-Admin"){
+                try{
+                    await gestorAdminModels.update(dadoAtualizado, {where: {cpf: cpf}}); // Query de alteração
+                }
+                catch(err){
+                    res.status(500).send("Houve um erro no servidor interno, tente novamente mais tarde!"); // Resposta final
+                };
+            };
 
-        // Verifica se o cargo do usuário é Gestor
-        if (req.body.cargo == "gestor") {
-            try {
-                await gestorModels.update(dadoAtualizado, { where: { cpf: cpf } }); // Query de alteração
-            }
-            catch (err) {
-                res.status(500).send("Houve um erro no servidor interno, tente novamente mais tarde!"); // Resposta final
-            }
-        }
+            // Verifica se o cargo do usuário é Gestor
+            if(req.body.cargo == "Gestor"){
+                try{
+                    await gestorModels.update(dadoAtualizado, {where: {cpf: cpf}}); // Query de alteração
+                }
+                catch(err){
+                    res.status(500).send("Houve um erro no servidor interno, tente novamente mais tarde!"); // Resposta final
+                };
+            };
 
-        // Verifica se o cargo do usuário é Médico
-        if (req.body.cargo == "gestor") {
-            try {
-                await gestorModels.update(dadoAtualizado, { where: { cpf: cpf } }); // Query de alteração
-            }
-            catch (err) {
-                res.status(500).send("Houve um erro no servidor interno, tente novamente mais tarde!"); // Resposta final
-            }
-        }
-    };
+            // Verifica se o cargo do usuário é Médico
+            if(req.body.cargo == "Médico"){
+                try{
+                    await medicoModels.update(dadoAtualizado, {where: {cpf: cpf}}); // Query de alteração
+                    await enderecoMedicoModels.update(dadoAtualizado, {where: {id_end_med: user.id}}); // Altera o endereço do atleta no banco de dados
+                    await telMedicoModels.update(dadoAtualizado, {where: {id_tel_med: user.id}}); // Altera o telefone do atleta no banco de dados
+                    res.status(200).send("Médico Atualizado!"); // Resposta final
+                }
+                catch(err){
+                    res.status(500).send("Houve um erro no servidor interno, tente novamente mais tarde!"); // Resposta final
+                };
+            };
+
+            if(req.body.cargo == "Médico-Convidado"){
+                try{
+                    await medicoConvModels.update(dadoAtualizado, {where: {cpf: cpf}}); // Query de alteração
+                    await enderecoMedicoModels.update(dadoAtualizado, {where: {id_end_conv: user.id}}); // Altera o endereço do atleta no banco de dados
+                    await telMedConvModels.update(dadoAtualizado, {where: {id_tel_conv: user.id}}); // Altera o telefone do atleta no banco de dados
+                    res.status(200).send("Médico Atualizado!"); // Resposta final
+                }
+                catch(err){
+                    res.status(500).send("Houve um erro no servidor interno, tente novamente mais tarde!"); // Resposta final
+                };
+            };
+
+            // Verifica se o cargo do usuário é Atleta
+            if(req.body.cargo == "Atleta"){
+                try{ // Tentar salvar usuário no banco de dados
+                    let user = atletaModels.findOne({where: {cpf: cpf}})
+                    await atletaModels.update(dadoAtualizado, {where: {cpf: cpf}}); // Altera o atleta no banco de dados
+                    await enderecoAtletaModels.update(dadoAtualizado, {where: {id_end_atl: user.id}}); // Altera o endereço do atleta no banco de dados
+                    await telAtletaModels.update(dadoAtualizado, {where: {id_tel_atl: user.id}}); // Altera o telefone do atleta no banco de dados
+                    res.status(200).send("Atleta Atualizado!"); // Resposta final
+                }
+                catch(err){ // Caso não consiga salvar no banco de dados
+                    res.status(500).send("Houve um erro no servidor interno, tente novamente mais tarde!"); // Resposta final
+                };
+            };
+
+
+        };
+    };  
 
 
     // -------------------------- DELETAR USUÁRIO --------------------------
-    static async deleteUser(req, res) {
+    static async deleteUser(req, res){
 
         let cpf = req.body.cpf; // Variável que vai receber o cpf inserido pelo usuário
         let cargo = req.body.cargo; // Variável que vai pegar o cargo
 
-        await database.sync();
+        await database.sync(); // Conexão com o banco de dados
 
-        if (cargo == "Atleta") {
+        if(cargo == "Atleta"){ 
             // Tentar deletar usuário
-            try {
-                await atletaModels.destroy({ where: { cpf: cpf } }); // Deletar o atleta do banco de dados
-                await enderecoAtletaModels.destroy({ where: { id_end_atl: user.id } }); // Deletar o endereço do atleta cadastrado no banco de dados
-                await telAtletaModels.destroy({ where: { id_tel_atl: user.id } }); // Deletar telefone do atleta no banco de dados
+            try{
+                let user = await atletaModels.findOne({where: {cpf: cpf}}); 
+                await atletaModels.destroy({where: {cpf: cpf}}); // Deletar o atleta do banco de dados
+                await enderecoAtletaModels.destroy({where: {id_end_atl: user.id}}); // Deletar o endereço do atleta cadastrado no banco de dados
+                await telAtletaModels.destroy({where: {id_tel_atl: user.id}}); // Deletar telefone do atleta no banco de dados
                 res.status(200).send("Atleta deletado com sucesso!"); // Resposta final
             }
-            catch (err) { // Caso não consiga deletar o usuário
+            catch(err){ // Caso não consiga deletar o usuário
                 res.send("Erro no servidor, tente novamente mais tarde!"); // Caso não consiga deletar usuário
-            }
-        }
+            };
+        };
 
-        if (cargo == "Gestor") {
+        if(cargo == "Gestor"){ 
             // Tentar deletar usuário
-            try {
-                await gestorModels.destroy({ where: { cpf: cpf } }); // Query para apagar 
+            try{
+                await gestorModels.destroy({where: {cpf: cpf}}); // Query para apagar 
                 res.status(200).send("Gestor deletado com sucesso!"); // Resposta final
             }
-            catch (err) { // Caso não consiga deletar o usuário
+            catch(err){ // Caso não consiga deletar o usuário
                 res.send("Erro no servidor, tente novamente mais tarde!"); // Caso não consiga deletar usuário
-            }
-        }
+            };
+        };
 
-        if (cargo == "Medico") {
-            try {
-                await medicoModels.destroy({ where: { id: id } }); // Deletar o médico do banco de dados 
-                await telMedicoModels.destroy({ where: { id: id } }); // Deletar telefone do médico no banco de dados
-                await enderecoMedicoModels.destroy({ where: { id: id } }); // Deletar o endereço do médico cadastrado no banco de dados
+        if(cargo == "Medico"){ 
+            try{
+                await medicoModels.destroy({where: {id: id}}); // Deletar o médico do banco de dados 
+                await telMedicoModels.destroy({where: {id: id}}); // Deletar telefone do médico no banco de dados
+                await enderecoMedicoModels.destroy({where: {id: id}}); // Deletar o endereço do médico cadastrado no banco de dados
                 res.status(200).send("Médico deletado com sucesso!"); // Resposta final
             }
-            catch (err) {
+            catch(err){
                 res.send("Erro no servidor, tente novamente mais tarde!"); // Caso não consiga deletar usuário
-            }
-        }
+            };
+        };
     };
 
+    // -------------------------- SOLICITAR EXAME PARA O ATLETA --------------------------
     static async solicitarAtleta(req, res){
-        await database.sync()
-        let request = await atletaModels.findOne({where : {cpf : req.body.cpf}})
+        await database.sync();
+        let request = await atletaModels.findOne({where : {cpf : req.body.cpf}});
         try{        
             await atletaModels.update({
             solicitacao : "SOLICITADO"
         }, {
             where:{cpf : req.body.cpf}
-        })
-        res.status(200).json({msg : "Exame solicitado para o médico"})
+        });
+        res.status(200).json({msg : "Exame solicitado com sucesso!!"});
     }
     catch(err){
-        res.send({msg : "Não foi possível acessar"})
-    }
-}
-
+        res.send({msg : "Houve um erro interno, tente novamente mais tarde"});
+    };
+};
 };
 
 // Exportar módulos
