@@ -5,7 +5,7 @@ ENV MYSQL_USER api
 ENV MYSQL_PASSWORD passwd
 
 COPY ./BANCO_DE_DADOS.sql /docker-entrypoint-initdb.d/
-COPY ./INSERT.sql /docker-entrypoint-initdb.d/
+
 
 WORKDIR /var/lib/mysqld
 

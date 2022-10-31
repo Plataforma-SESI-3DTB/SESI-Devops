@@ -4,7 +4,7 @@ const Sequelize = require('sequelize'); // Vai receber o sequelize
 // Conectar com banco de dados
 const database = new Sequelize('SESI','api','passwd',{
     dialect: 'mysql',
-    host:'192.168.15.8',
+    host:'10.105.75.181',
     port: 30306,
 });
 
